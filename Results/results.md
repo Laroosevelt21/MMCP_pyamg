@@ -4,4 +4,3 @@
 ## Code Output
 ![alt text](https://github.com/Laroosevelt21/MMCP_pyamg/blob/main/Results/Figure_1.png)
 ## Nonzero Matrix Structure
-![alt text](https://github.com/Laroosevelt21/MMCP_pyamg/blob/main/Results/Figure_2.png)
