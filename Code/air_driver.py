@@ -14,16 +14,15 @@ maximum_levels = 30         # Max levels in hierarchy
 maximum_coarse = 30         # Max points allowed on coarse grid
 tolerance = 1e-9      # Residual convergence tolerance
 coarse_solver = 'splu'
-krylov = 'gmres'
+krylov = 'fgmres'
 keep = False
-strength=('classical', {'theta': 0.01})
+strength=('classical', {'theta': 0.25})
 splitting = ('RS', {'second_pass': True})
-interp ='classical'
+interp ='one_point'
 restriction = ('air', {'theta': 0.05, 'degree': 2})
-prerelax  =('cf_jacobi', {'omega': 1.0, 'iterations': 1, 'withrho': True, 'f_iterations': 2, 'c_iterations': 1})
-postrelax = ('fc_jacobi', {'omega': 1.0, 'iterations': 1,'withrho': True, 'f_iterations': 2,'c_iterations': 1})
-#prepost = ('gauss_seidel_nr', {'sweep': 'symmetric', 'iterations': 1})
-filter_entries = None
+prerelax  =('cf_block_jacobi', {'omega': 1.0, 'iterations': 1, 'withrho': False, 'f_iterations': 2, 'c_iterations': 1})
+postrelax = ('fc_block_jacobi', {'omega': 1.0, 'iterations': 1,'withrho': False, 'f_iterations': 2,'c_iterations': 1})
+filter_entries = (True, 1e-4)
 maxiter = 1000
 
 
@@ -33,11 +32,14 @@ data = sio.loadmat('MMCP.mat')
 A=data['A']
 A = A.tocsr()
 A.data[np.abs(A.data) < 1e-16] = 0
-A.eliminate_zeros() 
+A.eliminate_zeros()
+A=A.tobsr(blocksize=(16,16))
+ 
         
-# Random initial guess and zero right hand side (Solving Ax = 0)
+# Random initial guess and provided right hand side (Solving Ax = b)
 x0 = np.random.rand(A.shape[0])
-b = np.zeros((A.shape[0],))
+vec = np.loadtxt('vec.csv')
+b = np.array(vec)
 
         
 # Create a multilevel solver using approximate ideal restriction (AIR) AMG
@@ -47,15 +49,9 @@ ml = air_solver(A,strength=strength,CF=splitting,interpolation=interp,restrict=r
                 max_levels=maximum_levels,keep=keep,max_coarse=maximum_coarse,coarse_solver=coarse_solver)
 
 
-# Create a multilevel solver using classical Ruge-Stuben AMG Solver
 
-# ml = pyamg.ruge_stuben_solver(A,strength = strength,CF = splitting,interpolation = interp,
-#                               presmoother = prerelax,postsmoother = postrelax,
-#                               max_levels = maximum_levels,max_coarse = maximum_coarse,
-#                               keep = keep,coarse_solver=coarse_solver)
+# Solve Ax=b with Krylov Method (AMG as a preconditioner to Krylov Method)
 
-
-# Solve Ax=b with GMRES (AMG as a preconditioner to GMRES)
 resvec=[]
 x = ml.solve(b, x0=x0, maxiter = maxiter, tol = tolerance ,accel=krylov, residuals=resvec)
 factors_air = (resvec[-1] / resvec[0])**(1.0 / len(resvec))
@@ -80,4 +76,5 @@ print("{:^9d} | {:^9d}  | {:^9.2g} | {:^9.2g} | {:^9.2g} | {:^9.2g}".format(
 plt.semilogy(resvec/resvec[0], '-')
 plt.xlabel('iterations')
 plt.ylabel('normalized residual')
+plt.grid(color='0.95')
 plt.show()
