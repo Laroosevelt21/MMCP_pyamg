@@ -15,7 +15,5 @@ Cols = np.array(Col,dtype=int)
 # Create the COO matrix (in coordinate format)
 A = scipy.sparse.coo_matrix((Values, (Rows, Cols)))
 
-# Convert into CSR storage format
-A = A.tocsr()
-
+# Save the matrix to file 
 sio.savemat("MMCP.mat", {'A' : A})
